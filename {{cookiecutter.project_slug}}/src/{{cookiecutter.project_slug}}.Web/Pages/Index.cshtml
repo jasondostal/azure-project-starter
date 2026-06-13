@@ -1,0 +1,11 @@
+@page
+@model IndexModel
+@{
+    ViewData["Title"] = "{{cookiecutter.project_name}}";
+}
+
+<div class="container">
+    <h1>{{cookiecutter.project_name}}</h1>
+    <p>{{cookiecutter.project_description}}</p>
+    <p>Environment: @Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT")</p>
+</div>

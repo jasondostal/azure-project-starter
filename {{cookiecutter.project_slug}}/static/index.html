@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>{{cookiecutter.project_name}}</title>
+  <style>
+    body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; max-width: 600px; margin: 2rem auto; padding: 0 1rem; line-height: 1.6; }
+    h1 { font-size: 1.5rem; }
+    code { background: #f4f4f4; padding: 0.15em 0.4em; border-radius: 3px; }
+  </style>
+</head>
+<body>
+  <h1>{{cookiecutter.project_name}}</h1>
+  <p>{{cookiecutter.project_description}}</p>
+  <p>Stack: Go {{ '1.23' }} / Chi / embedded SPA</p>
+  <p>Status: <span id="status">checking...</span></p>
+  <script>
+    fetch('/health').then(r => r.json()).then(d => {
+      document.getElementById('status').textContent = d.status;
+    });
+  </script>
+</body>
+</html>

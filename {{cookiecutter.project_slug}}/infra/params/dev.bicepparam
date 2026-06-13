@@ -1,3 +1,4 @@
+{% if cookiecutter.project_type != 'go-desktop' %}
 using 'main.bicep'
 
 // ── Core ──
@@ -9,4 +10,5 @@ param tenantId = '{{cookiecutter.azure_tenant_id}}'
 // ── SQL ──
 param sqlAdminLogin = 'sqladmin'
 param sqlAdminPassword = ''     // Secure — inject from Key Vault or variable group
+{% endif %}
 {% endif %}

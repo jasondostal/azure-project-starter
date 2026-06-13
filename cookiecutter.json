@@ -2,15 +2,25 @@
   "project_name": "member-portal",
   "project_slug": "MemberPortal",
   "project_description": "A brief description of what this service does.",
+  "project_type": "dotnet-api",
   "azure_tenant_id": "00000000-0000-0000-0000-000000000000",
   "team_name": "MyTeam",
   "ado_org": "your-org",
   "ado_project": "YourProject",
   "database_name": "AppDb",
   "app_port": 8080,
+  "go_module_path": "github.com/your-org/member-portal",
   "include_foundry": true,
   "include_apim": true,
   "include_sql": true,
+  "__project_type_choices": [
+    "dotnet-api",
+    "dotnet-web",
+    "python-function",
+    "go-web",
+    "go-desktop",
+    "node-agent"
+  ],
   "_copy_without_render": [
     ".gitignore",
     ".editorconfig"

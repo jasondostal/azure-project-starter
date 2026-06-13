@@ -9,12 +9,31 @@ obj/
 .env
 *.env
 appsettings.*.local.json
+{% if cookiecutter.project_type == 'python-function' %}
+local.settings.json
+{% endif %}
 
 ## OS
 .DS_Store
 Thumbs.db
 
-## Node (if you add a front-end later)
+{% if cookiecutter.project_type == 'node-agent' %}
+## Node
 node_modules/
 dist/
 .svelte-kit/
+{% endif %}
+
+{% if cookiecutter.project_type == 'go-web' or cookiecutter.project_type == 'go-desktop' %}
+## Go
+{{cookiecutter.project_name | lower}}
+*.exe
+{% endif %}
+
+{% if cookiecutter.project_type == 'python-function' %}
+## Python
+__pycache__/
+*.pyc
+.venv/
+.python_packages/
+{% endif %}

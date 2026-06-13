@@ -1,6 +1,6 @@
 # azure-project-starter
 
-Cookiecutter template for new .NET services.
+Cookiecutter template for new services — 6 archetypes, one command.
 
 **One command → full repo** with pipeline, IaC, code quality tooling, and onboarding docs.
 
@@ -16,41 +16,45 @@ pip install cruft
 cruft create gh:your-org/azure-project-starter
 ```
 
-Answer the prompts (project name, team, features to include). Gets you:
+Answer the prompts (project name, type, team, features). Gets you:
 
-- ✅ .NET 10 ASP.NET Core project with managed identity auth
-- ✅ Bicep IaC (consuming azure-platform-iac modules) — App Service, Key Vault, optional SQL/Foundry/APIM
-- ✅ Azure DevOps pipeline — Build → Lint → Scan → Deploy×4 (per-branch environment gates)
-- ✅ Infra pipeline — validate + deploy Bicep per environment
-- ✅ `.editorconfig` + `Directory.Build.props` with analyzers cranked
+- ✅ **6 archetypes**: dotnet-api, dotnet-web, python-function, go-web, go-desktop, node-agent
+- ✅ Bicep IaC (consuming azure-platform-iac modules) — App Service, Function App, or no infra (desktop)
+- ✅ Azure DevOps pipeline consuming platform pipeline templates (build + security gates + deploy)
+- ✅ Infra pipeline — validate + deploy Bicep per environment (not for desktop)
+- ✅ `.editorconfig` + language-specific tooling (.NET analyzers, Go modules, npm scripts)
 - ✅ `.gitignore`, `.cruft.json` (for `cruft update`), `.azure-guids.env`
-- ✅ `README.md` with quickstart, workflow, pipeline setup checklist
+- ✅ `README.md` rendered per-archetype with quickstart, workflow, pipeline setup checklist
 
-## What you get
+## Archetypes
+
+| Archetype | Runtime | Deployment | Use case |
+|-----------|---------|------------|----------|
+| `dotnet-api` | .NET 10 / ASP.NET Core API | App Service (Linux) | REST APIs, microservices |
+| `dotnet-web` | .NET 10 / Razor Pages | App Service (Linux) | Server-rendered web apps |
+| `python-function` | Python 3.12 / Azure Functions | Function App (serverless) | Event-driven, cron jobs, webhooks |
+| `go-web` | Go 1.23 / Chi + embedded SPA | App Service (Linux, Go) | Low-footprint APIs + SPA in one binary |
+| `go-desktop` | Go 1.23 / CLI | GitHub Releases (no Azure) | Cross-compiled CLI tools, desktop utils |
+| `node-agent` | Node 22 / TS / SvelteKit | App Service (Linux) | Foundry AI agents, voice, RAG front-ends |
+
+Each archetype gets its own pipeline template reference from the platform repo, the right Bicep module (App Service vs Function App vs none), and an archetype-specific directory structure.
+
+## What you get (example: dotnet-api)
 
 ```
 <your-project>/
-├── <Project>.slnx                    # Solution file (.NET 10 slnx format)
-├── Directory.Build.props             # Analyzers enabled, warnings-as-errors
-├── .editorconfig                     # Team-wide formatting
-├── .gitignore
-├── .cruft.json                       # cruft update metadata
-├── README.md                         # Project-specific onboarding
-├── src/
-│   └── <Project>.Api/
-│       ├── <Project>.Api.csproj
-│       ├── Program.cs                # Managed identity, health endpoint, DI
-│       ├── Controllers/
-│       │   └── HomeController.cs     # Placeholder — replace with your endpoints
-│       └── Services/
-│           └── DatabaseService.cs    # Placeholder — replace with your data layer
-├── infra/
-│   ├── main.bicep                    # Orchestrator — wires platform modules
-│   └── params/
-│       └── dev.bicepparam
+├── <Project>.slnx
+├── Directory.Build.props
+├── .editorconfig, .gitignore
+├── .cruft.json, .azure-guids.env
+├── README.md
+├── src/<Project>.Api/              # Source code (archetype-specific)
+├── infra/                          # Bicep IaC (skipped for go-desktop)
+│   ├── main.bicep
+│   └── params/dev.bicepparam
 └── pipelines/
-    ├── azure-pipelines.yml           # Build → Lint → Scan → Deploy×4
-    └── infra-pipeline.yml            # Bicep validate + deploy
+    ├── azure-pipelines.yml         # Consumes platform pipeline templates
+    └── infra-pipeline.yml          # Bicep CI/CD (skipped for go-desktop)
 ```
 
 ## Features included (conditional)

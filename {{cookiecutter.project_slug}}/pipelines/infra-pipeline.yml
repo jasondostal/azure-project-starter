@@ -1,3 +1,4 @@
+{% if cookiecutter.project_type != 'go-desktop' %}
 # ── Azure DevOps Pipeline — {{cookiecutter.project_name}} Infrastructure ──
 #
 # Triggered only when infra/ changes. Validates Bicep, then deploys
@@ -15,6 +16,13 @@ pr:
   paths:
     include: [infra/*]
 
+resources:
+  repositories:
+    - repository: platform
+      type: git
+      name: azure-platform-iac
+      ref: main
+
 variables:
   azureServiceConnection: 'sc-{{cookiecutter.project_name}}-iac'
 
@@ -26,6 +34,8 @@ stages:
         pool:
           vmImage: 'ubuntu-latest'
         steps:
+          - checkout: self
+          - checkout: platform
           - script: |
               az bicep build --file infra/main.bicep
             displayName: 'Bicep build (compile check)'
@@ -44,6 +54,8 @@ stages:
           runOnce:
             deploy:
               steps:
+                - checkout: self
+                - checkout: platform
                 - task: AzureCLI@2
                   inputs:
                     azureSubscription: '$(devServiceConnection)'
@@ -69,6 +81,8 @@ stages:
           runOnce:
             deploy:
               steps:
+                - checkout: self
+                - checkout: platform
                 - task: AzureCLI@2
                   inputs:
                     azureSubscription: '$(qaServiceConnection)'
@@ -94,6 +108,8 @@ stages:
           runOnce:
             deploy:
               steps:
+                - checkout: self
+                - checkout: platform
                 - task: AzureCLI@2
                   inputs:
                     azureSubscription: '$(stagingServiceConnection)'
@@ -119,6 +135,8 @@ stages:
           runOnce:
             deploy:
               steps:
+                - checkout: self
+                - checkout: platform
                 - task: AzureCLI@2
                   inputs:
                     azureSubscription: '$(prodServiceConnection)'
@@ -129,3 +147,4 @@ stages:
                         --location eastus \
                         --template-file infra/main.bicep \
                         --parameters infra/params/prod.bicepparam
+{% endif %}

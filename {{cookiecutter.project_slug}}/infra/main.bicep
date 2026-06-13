@@ -1,3 +1,4 @@
+{% if cookiecutter.project_type != 'go-desktop' %}
 targetScope = 'subscription'
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -6,8 +7,7 @@ targetScope = 'subscription'
 // Orchestrator that wires platform modules for this app, per environment.
 // Consumes modules from azure-platform-iac (checked out alongside).
 //
-// Generated from azure-project-starter — replace placeholder comments
-// with your actual infrastructure needs.
+// Generated from azure-project-starter ({{cookiecutter.project_type}} archetype).
 // ═══════════════════════════════════════════════════════════════════════════
 
 @description('Environment name: dev, qa, stage, prod')
@@ -23,9 +23,7 @@ param appName string = '{{cookiecutter.project_name}}'
 @description('Tenant ID (Entra ID directory)')
 param tenantId string = '{{cookiecutter.azure_tenant_id}}'
 
-// ═══════════════════════════════════════════════════════════════════════════
-// Resource Group
-// ═══════════════════════════════════════════════════════════════════════════
+// ── Resource Group ──────────────────────────────────────────────────────────
 
 var resourceGroupName = 'rg-${appName}-${environment}'
 
@@ -40,8 +38,44 @@ resource resourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   }
 }
 
+{% if cookiecutter.project_type == 'python-function' %}
 // ═══════════════════════════════════════════════════════════════════════════
-// App Service (always deployed — this is the minimum viable infra)
+// Function App (Python serverless)
+// ═══════════════════════════════════════════════════════════════════════════
+module appServicePlan '../../azure-platform-iac/modules/compute/app-service-plan.bicep' = {
+  name: '${appName}-asp-${environment}'
+  scope: resourceGroup
+  params: {
+    name: '${appName}-asp-${environment}'
+    location: location
+    skuName: (environment == 'prod' ? 'S1' : 'B1')
+    skuTier: (environment == 'prod' ? 'Standard' : 'Basic')
+    environment: environment
+    osKind: 'linux'
+  }
+}
+
+module functionApp '../../azure-platform-iac/modules/compute/function-app.bicep' = {
+  name: '${appName}-func-${environment}'
+  scope: resourceGroup
+  params: {
+    name: '${appName}-func-${environment}'
+    location: location
+    appServicePlanId: appServicePlan.outputs.id
+    runtimeStack: 'Python|3.12'
+    environment: environment
+    enableManagedIdentity: true
+  }
+}
+
+{% else %}
+// ═══════════════════════════════════════════════════════════════════════════
+// App Service (Linux)
+{% if cookiecutter.project_type == 'go-web' %}
+// Go binary + embedded SPA served from App Service
+{% elif cookiecutter.project_type == 'node-agent' %}
+// Node.js / TypeScript agent app
+{% endif %}
 // ═══════════════════════════════════════════════════════════════════════════
 module appServicePlan '../../azure-platform-iac/modules/compute/app-service-plan.bicep' = {
   name: '${appName}-asp-${environment}'
@@ -63,12 +97,19 @@ module appService '../../azure-platform-iac/modules/compute/app-service.bicep' =
     name: '${appName}-app-${environment}'
     location: location
     appServicePlanId: appServicePlan.outputs.id
+{% if cookiecutter.project_type == 'go-web' %}
+    runtimeStack: 'GO|1.23'
+{% elif cookiecutter.project_type == 'node-agent' %}
+    runtimeStack: 'NODE|22-lts'
+{% else %}
     runtimeStack: 'DOTNETCORE|10.0'
+{% endif %}
     alwaysOn: (environment == 'prod')
     environment: environment
     enableManagedIdentity: true
   }
 }
+{% endif %}
 
 // ═══════════════════════════════════════════════════════════════════════════
 // Key Vault (always deployed — managed identity secrets + config)
@@ -125,7 +166,6 @@ module sqlDatabase '../../azure-platform-iac/modules/data/sql-database.bicep' = 
 // ═══════════════════════════════════════════════════════════════════════════
 // Foundry AI — Hub, Models, Project, AI Search
 // ═══════════════════════════════════════════════════════════════════════════
-
 var foundryModels = [
   { name: 'gpt-5-mini', modelFormat: 'OpenAI', modelName: 'gpt-5-mini', modelVersion: '2024-10-21', skuName: 'GlobalStandard', skuCapacity: 10 }
   { name: 'text-embedding-3-small', modelFormat: 'OpenAI', modelName: 'text-embedding-3-small', modelVersion: '1', skuName: 'GlobalStandard', skuCapacity: 10 }
@@ -171,8 +211,12 @@ module foundryProject '../../azure-platform-iac/modules/ai/foundry-project.bicep
 // --- Outputs ---
 
 output resourceGroupName string = resourceGroup.name
+{% if cookiecutter.project_type == 'python-function' %}
+output functionAppName string = functionApp.outputs.name
+{% else %}
 output appServiceName string = appService.outputs.name
 output appServiceUrl string = appService.outputs.defaultHostName
+{% endif %}
 output keyVaultUri string = keyVault.outputs.uri
 
 {% if cookiecutter.include_sql %}
@@ -184,4 +228,5 @@ output sqlDatabaseName string = sqlDatabase.outputs.name
 output foundryEndpoint string = foundryHub.outputs.aiServicesEndpoint
 output foundryProjectEndpoint string = foundryProject.outputs.projectEndpoint
 output aiSearchEndpoint string = aiSearch.outputs.searchEndpoint
+{% endif %}
 {% endif %}
