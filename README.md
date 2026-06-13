@@ -91,7 +91,7 @@ The generated project consumes:
 ## The full platform
 
 ```
-azure-platform-iac        ← 17 generic Bicep modules (the foundation)
+azure-platform-iac        ← 21 generic Bicep modules (the foundation)
 azure-iac-reference       ← exhaustive demo: everything wired together
 azure-iac-patterns        ← standalone patterns: identity, foundry, networking, etc.
 azure-project-starter     ← this repo: cookiecutter template for new projects
