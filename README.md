@@ -1,19 +1,15 @@
 # azure-project-starter
 
 Cookiecutter template for new services — 6 archetypes, one command.
+Uses **cruft** to generate and keep projects in sync with the template.
 
 **One command → full repo** with pipeline, IaC, code quality tooling, and onboarding docs.
 
 ## Quickstart
 
 ```bash
-# Option 1: Cookiecutter (one-time)
-pip install cookiecutter
-cookiecutter gh:your-org/azure-project-starter
-
-# Option 2: Cruft (recommended — supports cruft update)
 pip install cruft
-cruft create gh:your-org/azure-project-starter
+cruft create gh:jasondostal/azure-project-starter
 ```
 
 Answer the prompts (project name, type, team, features). Gets you:
