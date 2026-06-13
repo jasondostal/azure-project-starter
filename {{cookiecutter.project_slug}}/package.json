@@ -6,7 +6,8 @@
     "dev": "vite dev",
     "build": "vite build",
     "start": "node server.js",
-    "setup-agents": "node --import tsx scripts/setup-agents.ts"
+    "setup-agents": "node --import tsx scripts/setup-agents.ts",
+    "postinstall": "pre-commit install --install-hooks 2>/dev/null || true"
   },
   "dependencies": {
     "@azure/ai-agents": "^1.0.0",

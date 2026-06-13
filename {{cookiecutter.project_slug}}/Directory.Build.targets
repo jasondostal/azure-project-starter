@@ -1,0 +1,9 @@
+<Project>
+  <!-- Auto-install pre-commit hooks after NuGet restore (silent on failure) -->
+  <Target Name="InstallPreCommitHooks" AfterTargets="Restore">
+    <Exec Command="pre-commit install --install-hooks 2&gt;NUL || exit 0"
+          WorkingDirectory="$(MSBuildProjectDirectory)"
+          ContinueOnError="true"
+          EchoOff="true" />
+  </Target>
+</Project>

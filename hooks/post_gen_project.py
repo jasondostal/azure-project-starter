@@ -59,6 +59,7 @@ is_go_web = PROJECT_TYPE == "go-web"
 
 if not is_dotnet:
     remove_file("Directory.Build.props")
+    remove_file("Directory.Build.targets")
     remove_file("{{cookiecutter.project_slug}}.slnx")
     if PROJECT_TYPE != "dotnet-api":
         remove_dir("src/{{cookiecutter.project_slug}}.Api")
@@ -68,8 +69,9 @@ if not is_dotnet:
 if not is_go:
     remove_dir("cmd")
     remove_dir("internal")
-    remove_dir("static")      # SPA placeholder — only for go-web
+    remove_dir("static")
     remove_file("go.mod")
+    remove_file("Makefile")
 else:
     # Go-specific cleanup
     if not is_go_web:

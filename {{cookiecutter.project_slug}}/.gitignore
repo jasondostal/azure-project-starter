@@ -17,6 +17,9 @@ local.settings.json
 .DS_Store
 Thumbs.db
 
+# pre-commit cache (generated locally, don't commit)
+.cache/
+
 {% if cookiecutter.project_type == 'node-agent' %}
 ## Node
 node_modules/

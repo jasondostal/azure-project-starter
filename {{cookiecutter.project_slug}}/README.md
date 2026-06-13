@@ -40,24 +40,27 @@
 
 ## Quickstart
 
+```bash
+# First time: one-command setup
+bash scripts/setup.sh
+
+# Then run:
+```
+
 {% if cookiecutter.project_type == 'dotnet-api' or cookiecutter.project_type == 'dotnet-web' %}
 ```bash
-dotnet restore {{cookiecutter.project_slug}}.slnx
-dotnet build {{cookiecutter.project_slug}}.slnx
 dotnet run --project src/{{cookiecutter.project_slug}}.{{ 'Api' if cookiecutter.project_type == 'dotnet-api' else 'Web' }}
 curl http://localhost:{{cookiecutter.app_port}}/health
 ```
 {% elif cookiecutter.project_type == 'python-function' %}
 ```bash
-cd src
-pip install -r requirements.txt
-func start
+source .venv/bin/activate
+cd src && func start
 curl http://localhost:7071/api/health
 ```
 {% elif cookiecutter.project_type == 'go-web' %}
 ```bash
 go run ./cmd/app
-# Opens on http://localhost:{{cookiecutter.app_port}}
 curl http://localhost:{{cookiecutter.app_port}}/health
 ```
 {% elif cookiecutter.project_type == 'go-desktop' %}
@@ -241,11 +244,39 @@ Requires a `GITHUB_TOKEN` secret in the ADO variable group with `repo` scope.
 
 ## Code quality
 
+### Commit hooks (shift-left)
+
+Pre-commit hooks run automatically on every `git commit` — no CI wait, no push cost:
+
+| Hook | What it catches | Gate |
+|------|----------------|------|
+| **gitleaks** | Secrets, API keys, tokens in code | **HARD** — blocks commit |
+{% if cookiecutter.project_type == 'dotnet-api' or cookiecutter.project_type == 'dotnet-web' %}
+| **dotnet format** | C# formatting, style violations | **HARD** — blocks commit |
+{% elif cookiecutter.project_type == 'python-function' %}
+| **ruff** | Python linting + formatting | **HARD** — blocks commit |
+{% elif cookiecutter.project_type == 'go-web' or cookiecutter.project_type == 'go-desktop' %}
+| **go fmt + go vet** | Go formatting + static analysis | **HARD** — blocks commit |
+{% elif cookiecutter.project_type == 'node-agent' %}
+| **prettier** | JS/TS/Svelte/CSS formatting | **HARD** — blocks commit |
+{% endif %}
+| trailing-whitespace | Trailing spaces | Auto-fixes |
+| end-of-file-fixer | Missing final newline | Auto-fixes |
+| check-merge-conflict | Unresolved merge markers | **HARD** |
+| detect-private-key | Private key files | **HARD** |
+| check-added-large-files | Files > 500KB | **HARD** |
+
+Hooks auto-install on first `bash scripts/setup.sh` (or automatically via package manager post-install for Node).
+
+To run manually: `pre-commit run --all-files`
+
+### CI scanners (belt-and-suspenders)
+
 - `.editorconfig` — consistent formatting across the team
 {% if cookiecutter.project_type == 'dotnet-api' or cookiecutter.project_type == 'dotnet-web' %}
 - `Directory.Build.props` — .NET analyzers enabled, warnings-as-errors
 {% endif %}
-- All scanning happens in the platform pipeline templates (gitleaks, trivy, semgrep, NuGet vuln) — no repo-level config needed
+- All scanning also runs in the platform pipeline templates (gitleaks, trivy, semgrep, NuGet vuln) — belt-and-suspenders
 - **Add a scanner to the platform repo → this project gets it on next build**
 
 ## Syncing with the template
