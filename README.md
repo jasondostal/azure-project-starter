@@ -58,9 +58,12 @@ Each archetype gets its own pipeline template reference from the platform repo, 
 
 | Feature | Toggle | Adds |
 |---|---|---|
+| Cosmos DB | `include_cosmos` | Cosmos DB (serverless), key auth disabled, app managed identity granted Data Contributor (passwordless). Endpoint injected as `Cosmos__Endpoint`. |
 | SQL Server + Database | `include_sql` | Azure SQL, connection string in App Service |
 | Foundry AI | `include_foundry` | Foundry Hub + Project + AI Search + GPT-5-mini |
 | API Management | `include_apim` | APIM instance + auth policies (Entra ID, B2C, client credentials) |
+
+Data backends are independent toggles, composable with any archetype — Cosmos, SQL, both, or neither. Cosmos consumes with `new CosmosClient(endpoint, new DefaultAzureCredential())` (no key). SQL requires the server identity to hold the Entra **Directory Readers** role for passwordless managed-identity access — see [azure-platform-iac](../azure-platform-iac) → Passwordless SQL.
 
 ## Syncing projects with template updates
 

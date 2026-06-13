@@ -13,6 +13,7 @@
   "include_foundry": true,
   "include_apim": true,
   "include_sql": true,
+  "include_cosmos": false,
   "__project_type_choices": [
     "dotnet-api",
     "dotnet-web",

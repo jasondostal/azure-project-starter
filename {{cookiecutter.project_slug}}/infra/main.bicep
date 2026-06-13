@@ -55,6 +55,14 @@ resource resourceGroup 'Microsoft.Resources/resourceGroups@2024-03-01' = {
   }
 }
 
+{% if cookiecutter.include_cosmos %}
+// Cosmos DB account name (globally unique, deterministic) + endpoint. The endpoint
+// is computed from the name so the app can be configured without depending on the
+// Cosmos resource — avoids a circular dependency with the data-plane role assignment.
+var cosmosAccountName = take('${toLower(replace(appName, '-', ''))}cosmos${uniqueString(resourceGroup.id)}', 44)
+var cosmosEndpoint = 'https://${cosmosAccountName}.documents.azure.com:443/'
+{% endif %}
+
 {% if cookiecutter.project_type == 'python-function' %}
 // ═══════════════════════════════════════════════════════════════════════════
 // Function App (Python serverless)
@@ -97,6 +105,11 @@ module functionApp '../../azure-platform-iac/modules/compute/function-app.bicep'
     runtimeStack: 'python'
     runtimeVersion: '3.12'
     environment: environment
+{% if cookiecutter.include_cosmos %}
+    appSettings: {
+      Cosmos__Endpoint: cosmosEndpoint
+    }
+{% endif %}
   }
 }
 
@@ -139,6 +152,11 @@ module appService '../../azure-platform-iac/modules/compute/app-service.bicep' =
     alwaysOn: (environment == 'prod')
     environment: environment
     enableManagedIdentity: true
+{% if cookiecutter.include_cosmos %}
+    appSettings: {
+      Cosmos__Endpoint: cosmosEndpoint
+    }
+{% endif %}
   }
 }
 {% endif %}
@@ -190,6 +208,33 @@ module sqlDatabase '../../azure-platform-iac/modules/data/sql-database.bicep' = 
     skuName: (environment == 'prod' || environment == 'stage' ? 'S0' : 'Basic')
     skuTier: (environment == 'prod' || environment == 'stage' ? 'Standard' : 'Basic')
     environment: environment
+  }
+}
+{% endif %}
+
+{% if cookiecutter.include_cosmos %}
+// ═══════════════════════════════════════════════════════════════════════════
+// Cosmos DB — passwordless. App managed identity gets the built-in Data
+// Contributor role (data plane), so it reads/writes documents with no key.
+// Control-plane RBAC: no Directory Readers, no contained users. Consume with
+//   new CosmosClient(endpoint, new DefaultAzureCredential())
+// ═══════════════════════════════════════════════════════════════════════════
+module cosmos '../../azure-platform-iac/modules/data/cosmos-db.bicep' = {
+  name: '${appName}-cosmos-${environment}'
+  scope: resourceGroup
+  params: {
+    name: cosmosAccountName
+    location: location
+    environment: environment
+    databaseName: 'appdb'
+    containerName: '{{cookiecutter.database_name | lower}}'
+    dataContributorPrincipalIds: [
+{% if cookiecutter.project_type == 'python-function' %}
+      functionApp.outputs.managedIdentityPrincipalId
+{% else %}
+      appService.outputs.managedIdentityPrincipalId
+{% endif %}
+    ]
   }
 }
 {% endif %}
