@@ -84,8 +84,11 @@ stages:
           # language-agnostic (gitleaks/trivy/semgrep). gitleaks is a HARD
           # gate; the rest warn. Wiring this once here (not per-archetype)
           # is the whole point of the platform: one source of truth, no repo
-          # ships without secret scanning.
+          # ships without secret scanning. The .NET-only steps (dotnet format,
+          # NuGet vuln) are gated off for non-.NET archetypes.
           - template: pipelines/templates/security-gates.yml@platform
+            parameters:
+              dotnet: {{ 'true' if cookiecutter.project_type in ['dotnet-api', 'dotnet-web'] else 'false' }}
 
   # ═══════════════════════════════════════════════════════════════════════════
   # DEPLOY — one stage per environment (branch-gated + approval-gated).
