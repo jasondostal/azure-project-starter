@@ -29,6 +29,15 @@ param internalApiClientId string = ''
 
 @description('M2M client-credential app registration client ID (optional). Empty = no client-credential auth.')
 param m2mClientId string = ''
+
+@description('Azure AD B2C app registration client ID (external/partner users). Empty = no B2C auth. B2C lives in its OWN tenant — create the app there, not via setup-app-registrations.sh.')
+param b2cClientId string = ''
+
+@description('B2C tenant name — the <name> in <name>.b2clogin.com (e.g. contosob2c)')
+param b2cTenantName string = ''
+
+@description('B2C sign-in user-flow / policy name')
+param b2cSignInPolicy string = 'B2C_1_signin'
 {% endif %}
 
 // ── Resource Group ──────────────────────────────────────────────────────────
@@ -272,6 +281,10 @@ module api '../../azure-platform-iac/modules/integration/apim-api.bicep' = {
     enableClientCredentialAuth: !empty(m2mClientId)
     clientCredentialTenantId: tenantId
     clientCredentialAudience: m2mClientId
+    enableB2CAuth: !empty(b2cClientId)
+    b2cTenantName: b2cTenantName
+    b2cSignInPolicy: b2cSignInPolicy
+    b2cAudience: b2cClientId
   }
 }
 {% endif %}
