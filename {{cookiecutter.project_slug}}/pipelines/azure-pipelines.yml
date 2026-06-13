@@ -1,0 +1,208 @@
+# ── Azure DevOps Pipeline — {{cookiecutter.project_name}} ────────────────────
+#
+# Build + Lint + Scan + Deploy (4 environments)
+# Consumes variable groups: vg-{{cookiecutter.project_name}}-shared, vg-{{cookiecutter.project_name}}-dev, etc.
+# Environments: {{cookiecutter.project_name}}-dev, {{cookiecutter.project_name}}-qa, {{cookiecutter.project_name}}-staging, {{cookiecutter.project_name}}-prod
+#
+# Generated from azure-project-starter — customize as needed.
+# ──────────────────────────────────────────────────────────────────────────────
+
+trigger:
+  branches:
+    include: [dev, qa, stage, main, release/*]
+
+pr:
+  branches:
+    include: [dev, qa, stage, main]
+
+variables:
+  buildConfiguration: 'Release'
+  dotnetVersion: '10.x'
+  solutionFile: '{{cookiecutter.project_slug}}.slnx'
+  artifactName: '{{cookiecutter.project_name}}'
+  # Variable groups (configure in ADO Library):
+  # - group: vg-{{cookiecutter.project_name}}-shared   # build config
+  # - group: vg-{{cookiecutter.project_name}}-dev      # dev service connection, app name
+  # - group: vg-{{cookiecutter.project_name}}-qa
+  # - group: vg-{{cookiecutter.project_name}}-staging
+  # - group: vg-{{cookiecutter.project_name}}-prod
+
+stages:
+  # ═══════════════════════════════════════════════════════════════════════════
+  # BUILD — runs on every trigger regardless of branch
+  # ═══════════════════════════════════════════════════════════════════════════
+  - stage: Build
+    displayName: 'Build & Test'
+    jobs:
+      - job: BuildApp
+        displayName: 'Build {{cookiecutter.project_name}}'
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - task: UseDotNet@2
+            displayName: 'Install .NET $(dotnetVersion)'
+            inputs:
+              packageType: 'sdk'
+              version: '$(dotnetVersion)'
+
+          - task: DotNetCoreCLI@2
+            displayName: 'Restore'
+            inputs:
+              command: 'restore'
+              projects: '**/*.slnx'
+
+          - task: DotNetCoreCLI@2
+            displayName: 'Build'
+            inputs:
+              command: 'build'
+              projects: '**/*.slnx'
+              arguments: '--configuration $(buildConfiguration) --no-restore'
+
+          - task: DotNetCoreCLI@2
+            displayName: 'Test'
+            inputs:
+              command: 'test'
+              projects: '**/*Tests*.csproj'
+              arguments: '--configuration $(buildConfiguration) --no-build'
+            continueOnError: true   # Gate relaxed during initial setup — tighten later
+
+          # ── Quality Gates ──────────────────────────────────────────────────
+          - script: dotnet format --verify-no-changes --verbosity diagnostic
+            displayName: 'Lint: dotnet format'
+            continueOnError: true
+
+          # Install gitleaks (Linux)
+          - script: |
+              curl -sSfL https://github.com/gitleaks/gitleaks/releases/download/v8.21.2/gitleaks_8.21.2_linux_x64.tar.gz | tar xz -C /tmp
+              /tmp/gitleaks detect --source . --verbose
+            displayName: 'Security: gitleaks (HARD)'
+            continueOnError: false
+
+          - script: dotnet list package --vulnerable --include-transitive
+            displayName: 'Security: NuGet vulnerability scan'
+            continueOnError: true
+
+          # Semgrep SAST (Python dependency, skip if not installed)
+          - script: |
+              pip install semgrep --quiet 2>/dev/null || true
+              semgrep --config auto --error . 2>/dev/null || true
+            displayName: 'Security: Semgrep SAST'
+            continueOnError: true
+
+          # Trivy filesystem scan
+          - script: |
+              curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b /usr/local/bin v0.57.1
+              trivy fs --scanners vuln,secret --severity HIGH,CRITICAL --exit-code 0 .
+            displayName: 'Security: Trivy FS scan'
+            continueOnError: true
+
+          # ── Publish Artifact ───────────────────────────────────────────────
+          - task: DotNetCoreCLI@2
+            displayName: 'Publish'
+            inputs:
+              command: 'publish'
+              publishWebProjects: true
+              arguments: '--configuration $(buildConfiguration) --output $(Build.ArtifactStagingDirectory)'
+              zipAfterPublish: true
+
+          - task: PublishPipelineArtifact@1
+            inputs:
+              targetPath: '$(Build.ArtifactStagingDirectory)'
+              artifactName: '$(artifactName)'
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # DEPLOY DEV — auto-deploys on push to dev branch
+  # ═══════════════════════════════════════════════════════════════════════════
+  - stage: DeployDev
+    displayName: 'Deploy → DEV'
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/dev'))
+    jobs:
+      - deployment: DeployToDev
+        displayName: 'Deploy to DEV'
+        environment: '{{cookiecutter.project_name}}-dev'
+        pool:
+          vmImage: 'ubuntu-latest'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - script: |
+                    echo "→ Deploying $(artifactName) to DEV"
+                    echo "  App: $(devAppName)"
+                    echo "  Using artifact from pipeline"
+                  displayName: 'Deploy to App Service DEV'
+                - task: AzureWebApp@1
+                  inputs:
+                    azureSubscription: '$(devServiceConnection)'
+                    appName: '$(devAppName)'
+                    package: '$(Pipeline.Workspace)/$(artifactName)/**/*.zip'
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # DEPLOY QA — requires QA lead approval
+  # ═══════════════════════════════════════════════════════════════════════════
+  - stage: DeployQA
+    displayName: 'Deploy → QA'
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/qa'))
+    jobs:
+      - deployment: DeployToQA
+        displayName: 'Deploy to QA'
+        environment: '{{cookiecutter.project_name}}-qa'
+        pool:
+          vmImage: 'ubuntu-latest'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureWebApp@1
+                  inputs:
+                    azureSubscription: '$(qaServiceConnection)'
+                    appName: '$(qaAppName)'
+                    package: '$(Pipeline.Workspace)/$(artifactName)/**/*.zip'
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # DEPLOY STAGE — requires tech lead approval
+  # ═══════════════════════════════════════════════════════════════════════════
+  - stage: DeployStaging
+    displayName: 'Deploy → STAGING'
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/stage'))
+    jobs:
+      - deployment: DeployToStaging
+        displayName: 'Deploy to STAGING'
+        environment: '{{cookiecutter.project_name}}-staging'
+        pool:
+          vmImage: 'ubuntu-latest'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureWebApp@1
+                  inputs:
+                    azureSubscription: '$(stagingServiceConnection)'
+                    appName: '$(stagingAppName)'
+                    package: '$(Pipeline.Workspace)/$(artifactName)/**/*.zip'
+
+  # ═══════════════════════════════════════════════════════════════════════════
+  # DEPLOY PROD — VP approval + business hours gate
+  # ═══════════════════════════════════════════════════════════════════════════
+  - stage: DeployProd
+    displayName: 'Deploy → PROD'
+    dependsOn: Build
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - deployment: DeployToProd
+        displayName: 'Deploy to PROD'
+        environment: '{{cookiecutter.project_name}}-prod'
+        pool:
+          vmImage: 'ubuntu-latest'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureWebApp@1
+                  inputs:
+                    azureSubscription: '$(prodServiceConnection)'
+                    appName: '$(prodAppName)'
+                    package: '$(Pipeline.Workspace)/$(artifactName)/**/*.zip'

@@ -1,0 +1,131 @@
+# ── Azure DevOps Pipeline — {{cookiecutter.project_name}} Infrastructure ──
+#
+# Triggered only when infra/ changes. Validates Bicep, then deploys
+# infrastructure per environment with approval gates.
+# -----------------------------------------------------------------------------
+trigger:
+  branches:
+    include: [dev, qa, stage, main]
+  paths:
+    include: [infra/*]
+
+pr:
+  branches:
+    include: [dev, qa, stage, main]
+  paths:
+    include: [infra/*]
+
+variables:
+  azureServiceConnection: 'sc-{{cookiecutter.project_name}}-iac'
+
+stages:
+  - stage: Validate
+    displayName: 'Validate Bicep'
+    jobs:
+      - job: Lint
+        pool:
+          vmImage: 'ubuntu-latest'
+        steps:
+          - script: |
+              az bicep build --file infra/main.bicep
+            displayName: 'Bicep build (compile check)'
+
+  - stage: DeployDev
+    displayName: 'Deploy Infra → DEV'
+    dependsOn: Validate
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/dev'))
+    jobs:
+      - deployment: DeployInfraDev
+        displayName: 'Deploy infra to DEV'
+        environment: '{{cookiecutter.project_name}}-dev'
+        pool:
+          vmImage: 'ubuntu-latest'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureCLI@2
+                  inputs:
+                    azureSubscription: '$(devServiceConnection)'
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      az deployment sub create \
+                        --location eastus \
+                        --template-file infra/main.bicep \
+                        --parameters infra/params/dev.bicepparam
+
+  - stage: DeployQA
+    displayName: 'Deploy Infra → QA'
+    dependsOn: Validate
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/qa'))
+    jobs:
+      - deployment: DeployInfraQA
+        displayName: 'Deploy infra to QA'
+        environment: '{{cookiecutter.project_name}}-qa'
+        pool:
+          vmImage: 'ubuntu-latest'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureCLI@2
+                  inputs:
+                    azureSubscription: '$(qaServiceConnection)'
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      az deployment sub create \
+                        --location eastus \
+                        --template-file infra/main.bicep \
+                        --parameters infra/params/qa.bicepparam
+
+  - stage: DeployStaging
+    displayName: 'Deploy Infra → STAGING'
+    dependsOn: Validate
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/stage'))
+    jobs:
+      - deployment: DeployInfraStaging
+        displayName: 'Deploy infra to STAGING'
+        environment: '{{cookiecutter.project_name}}-staging'
+        pool:
+          vmImage: 'ubuntu-latest'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureCLI@2
+                  inputs:
+                    azureSubscription: '$(stagingServiceConnection)'
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      az deployment sub create \
+                        --location eastus \
+                        --template-file infra/main.bicep \
+                        --parameters infra/params/staging.bicepparam
+
+  - stage: DeployProd
+    displayName: 'Deploy Infra → PROD'
+    dependsOn: Validate
+    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
+    jobs:
+      - deployment: DeployInfraProd
+        displayName: 'Deploy infra to PROD'
+        environment: '{{cookiecutter.project_name}}-prod'
+        pool:
+          vmImage: 'ubuntu-latest'
+        strategy:
+          runOnce:
+            deploy:
+              steps:
+                - task: AzureCLI@2
+                  inputs:
+                    azureSubscription: '$(prodServiceConnection)'
+                    scriptType: 'bash'
+                    scriptLocation: 'inlineScript'
+                    inlineScript: |
+                      az deployment sub create \
+                        --location eastus \
+                        --template-file infra/main.bicep \
+                        --parameters infra/params/prod.bicepparam

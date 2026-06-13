@@ -1,0 +1,3 @@
+<Solution>
+  <Project Path="src/{{cookiecutter.project_slug}}.Api/{{cookiecutter.project_slug}}.Api.csproj" />
+</Solution>

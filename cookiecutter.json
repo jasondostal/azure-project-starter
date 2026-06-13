@@ -1,0 +1,18 @@
+{
+  "project_name": "member-portal",
+  "project_slug": "MemberPortal",
+  "project_description": "A brief description of what this service does.",
+  "azure_tenant_id": "00000000-0000-0000-0000-000000000000",
+  "team_name": "MyTeam",
+  "ado_org": "foxcu",
+  "ado_project": "FUSE",
+  "database_name": "AppDb",
+  "app_port": 8080,
+  "include_foundry": true,
+  "include_apim": true,
+  "include_sql": true,
+  "_copy_without_render": [
+    ".gitignore",
+    ".editorconfig"
+  ]
+}

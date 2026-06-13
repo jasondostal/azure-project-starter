@@ -1,0 +1,20 @@
+## Build
+bin/
+obj/
+*.user
+*.suo
+.vs/
+
+## Secrets
+.env
+*.env
+appsettings.*.local.json
+
+## OS
+.DS_Store
+Thumbs.db
+
+## Node (if you add a front-end later)
+node_modules/
+dist/
+.svelte-kit/
