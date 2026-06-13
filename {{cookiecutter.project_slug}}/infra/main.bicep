@@ -23,6 +23,14 @@ param appName string = '{{cookiecutter.project_name}}'
 @description('Tenant ID (Entra ID directory)')
 param tenantId string = '{{cookiecutter.azure_tenant_id}}'
 
+{% if cookiecutter.include_apim %}
+@description('Internal API Entra app registration client ID. Run scripts/setup-app-registrations.sh, then set per env from .azure-guids.env. Empty = no Entra auth on the API.')
+param internalApiClientId string = ''
+
+@description('M2M client-credential app registration client ID (optional). Empty = no client-credential auth.')
+param m2mClientId string = ''
+{% endif %}
+
 // ── Resource Group ──────────────────────────────────────────────────────────
 
 var resourceGroupName = 'rg-${appName}-${environment}'
@@ -55,6 +63,20 @@ module appServicePlan '../../azure-platform-iac/modules/compute/app-service-plan
   }
 }
 
+// Storage account required by the Functions runtime (AzureWebJobsStorage).
+// Name: lowercase-alphanumeric, ≤24 chars, globally unique.
+var funcStorageName = take('${toLower(replace(replace(appName, '-', ''), '_', ''))}${uniqueString(resourceGroup.id)}', 24)
+
+module functionStorage '../../azure-platform-iac/modules/data/storage.bicep' = {
+  name: '${appName}-stg-${environment}'
+  scope: resourceGroup
+  params: {
+    name: funcStorageName
+    location: location
+    environment: environment
+  }
+}
+
 module functionApp '../../azure-platform-iac/modules/compute/function-app.bicep' = {
   name: '${appName}-func-${environment}'
   scope: resourceGroup
@@ -62,9 +84,10 @@ module functionApp '../../azure-platform-iac/modules/compute/function-app.bicep'
     name: '${appName}-func-${environment}'
     location: location
     appServicePlanId: appServicePlan.outputs.id
-    runtimeStack: 'Python|3.12'
+    storageAccountName: functionStorage.outputs.name
+    runtimeStack: 'python'
+    runtimeVersion: '3.12'
     environment: environment
-    enableManagedIdentity: true
   }
 }
 
@@ -208,6 +231,51 @@ module foundryProject '../../azure-platform-iac/modules/ai/foundry-project.bicep
 }
 {% endif %}
 
+{% if cookiecutter.include_apim %}
+// ═══════════════════════════════════════════════════════════════════════════
+// API Management — gateway + protected API with Entra/M2M auth
+//
+// App registrations can't be created by Bicep — run
+// scripts/setup-app-registrations.sh, then set internalApiClientId /
+// m2mClientId per env. validate-jwt activates automatically when an ID is set.
+// ═══════════════════════════════════════════════════════════════════════════
+module apim '../../azure-platform-iac/modules/integration/api-management.bicep' = {
+  name: '${appName}-apim-${environment}'
+  scope: resourceGroup
+  params: {
+    name: '${appName}-apim-${environment}'
+    location: location
+    sku: (environment == 'prod' ? 'Standard' : 'Developer')
+    publisherEmail: 'platform@{{cookiecutter.team_name | lower}}.example'
+    publisherName: '{{cookiecutter.project_name}}'
+    environment: environment
+  }
+}
+
+module api '../../azure-platform-iac/modules/integration/apim-api.bicep' = {
+  name: '${appName}-api-${environment}'
+  scope: resourceGroup
+  params: {
+    apimServiceName: apim.outputs.name
+    apiName: '${appName}-api'
+    displayName: '{{cookiecutter.project_name}} API'
+    path: '{{cookiecutter.project_name | lower}}'
+{% if cookiecutter.project_type == 'python-function' %}
+    serviceUrl: 'https://${functionApp.outputs.defaultHostName}'
+{% else %}
+    serviceUrl: 'https://${appService.outputs.defaultHostName}'
+{% endif %}
+    environment: environment
+    enableEntraAuth: !empty(internalApiClientId)
+    entraTenantId: tenantId
+    entraAudience: internalApiClientId
+    enableClientCredentialAuth: !empty(m2mClientId)
+    clientCredentialTenantId: tenantId
+    clientCredentialAudience: m2mClientId
+  }
+}
+{% endif %}
+
 // --- Outputs ---
 
 output resourceGroupName string = resourceGroup.name
@@ -228,5 +296,9 @@ output sqlDatabaseName string = sqlDatabase.outputs.name
 output foundryEndpoint string = foundryHub.outputs.aiServicesEndpoint
 output foundryProjectEndpoint string = foundryProject.outputs.projectEndpoint
 output aiSearchEndpoint string = aiSearch.outputs.searchEndpoint
+{% endif %}
+
+{% if cookiecutter.include_apim %}
+output apimGatewayUrl string = apim.outputs.gatewayUrl
 {% endif %}
 {% endif %}
