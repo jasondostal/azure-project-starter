@@ -8,7 +8,6 @@ Does things that cookiecutter/Jinja2 can't do in static templates:
 """
 import os
 import sys
-import uuid
 import shutil
 import subprocess
 from pathlib import Path
@@ -16,11 +15,6 @@ from pathlib import Path
 
 PROJECT_DIR = Path.cwd()
 PROJECT_TYPE = "{{ cookiecutter.project_type }}"
-
-
-def generate_stable_guid(seed: str) -> str:
-    """Generate a deterministic GUID from a seed string (stable across runs)."""
-    return str(uuid.uuid5(uuid.NAMESPACE_DNS, seed))
 
 
 def remove_dir(path: str) -> None:
@@ -96,23 +90,24 @@ if is_go_desktop:
     remove_dir("infra")
     remove_file("pipelines/infra-pipeline.yml")
 
-# ── 2. Generate stable GUIDs ────────────────────────────────────────────────
+# ── 2. App registration bootstrap (APIM only) ───────────────────────────────
+#    Entra app registrations CANNOT be created by Bicep, and the client ID
+#    (appId) is assigned BY Azure at creation time — there is nothing real to
+#    pre-generate here. Pre-minting a "client ID" would be fiction: it would
+#    never match the appId that `az ad app create` actually returns.
+#
+#    Instead, projects that expose an API via APIM ship a bootstrap script that
+#    creates the app reg(s) and writes the REAL client IDs to .azure-guids.env
+#    (gitignored — never committed). appRole GUIDs ARE caller-owned, so the
+#    script derives them deterministically from the project name at runtime,
+#    keeping reruns idempotent. Projects without APIM need no app reg, so the
+#    script is removed.
 
 project_name = "{{ cookiecutter.project_name }}"
+include_apim = "{{ cookiecutter.include_apim }}".lower() == "true"
 
-guids = {
-    "INTERNAL_API_CLIENT_ID": generate_stable_guid(f"{project_name}.internal-api"),
-    "M2M_CLIENT_ID": generate_stable_guid(f"{project_name}.m2m-client"),
-}
-
-guids_path = PROJECT_DIR / ".azure-guids.env"
-with open(guids_path, "w") as f:
-    f.write("# Auto-generated stable GUIDs for Azure app registrations.\n")
-    f.write("# Re-running cookiecutter with the same project_name produces the same IDs.\n")
-    f.write("# These are DETERMINISTIC — suitable for IAC app registrations, not for secrets.\n")
-    for key, val in guids.items():
-        f.write(f"{key}={val}\n")
-print(f"  wrote {guids_path}")
+if not include_apim or is_go_desktop:
+    remove_file("scripts/setup-app-registrations.sh")
 
 # ── 3. Write .cruft.json (for cruft update) ─────────────────────────────────
 
@@ -157,8 +152,9 @@ print(f"""
 
 Next steps:
   cd {PROJECT_DIR}
-  # 1. Create Entra app registrations (if using APIM auth):
-  #    az ad app create --display-name "{project_name}-api-internal-dev"
+  # 1. Create Entra app registrations (APIM projects only):
+  #    bash scripts/setup-app-registrations.sh
+  #    → creates the app reg(s), writes REAL client IDs to .azure-guids.env
   #
   # 2. Create the Azure DevOps project variables + service connections
   #

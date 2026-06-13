@@ -19,7 +19,8 @@ Answer the prompts (project name, type, team, features). Gets you:
 - ✅ Azure DevOps pipeline consuming platform pipeline templates (build + security gates + deploy)
 - ✅ Infra pipeline — validate + deploy Bicep per environment (not for desktop)
 - ✅ `.editorconfig` + language-specific tooling (.NET analyzers, Go modules, npm scripts)
-- ✅ `.gitignore`, `.cruft.json` (for `cruft update`), `.azure-guids.env`
+- ✅ `.gitignore`, `.cruft.json` (for `cruft update`)
+- ✅ APIM projects: `scripts/setup-app-registrations.sh` — creates the Entra app reg(s) and captures the **real** client IDs (Bicep can't; Entra assigns them)
 - ✅ `README.md` rendered per-archetype with quickstart, workflow, pipeline setup checklist
 
 ## Archetypes
@@ -42,7 +43,7 @@ Each archetype gets its own pipeline template reference from the platform repo, 
 ├── <Project>.slnx
 ├── Directory.Build.props
 ├── .editorconfig, .gitignore
-├── .cruft.json, .azure-guids.env
+├── .cruft.json
 ├── README.md
 ├── src/<Project>.Api/              # Source code (archetype-specific)
 ├── infra/                          # Bicep IaC (skipped for go-desktop)
@@ -73,7 +74,7 @@ cruft update      # Merge template changes
 
 ## Before you push
 
-1. Create Entra app registrations (if using APIM): `az ad app create --display-name "your-project-api-internal-dev"`
+1. Create Entra app registrations (APIM projects only): `bash scripts/setup-app-registrations.sh` — writes the real client IDs to the (gitignored) `.azure-guids.env`
 2. Configure ADO variable groups + service connections + environments
 3. Update `infra/params/*.bicepparam` with real values
 4. Push → pipeline auto-triggers on branch match

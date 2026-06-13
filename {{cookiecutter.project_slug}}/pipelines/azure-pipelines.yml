@@ -54,8 +54,6 @@ stages:
               solutionFile: '**/*.slnx'
               artifactName: '{{cookiecutter.project_name}}'
 
-          - template: pipelines/templates/security-gates.yml@platform
-
 {% elif cookiecutter.project_type == 'python-function' %}
           - template: pipelines/templates/build-python.yml@platform
             parameters:
@@ -81,6 +79,13 @@ stages:
               artifactName: '{{cookiecutter.project_name}}'
 
 {% endif %}
+
+          # Security gates run for EVERY archetype — the scanners are
+          # language-agnostic (gitleaks/trivy/semgrep). gitleaks is a HARD
+          # gate; the rest warn. Wiring this once here (not per-archetype)
+          # is the whole point of the platform: one source of truth, no repo
+          # ships without secret scanning.
+          - template: pipelines/templates/security-gates.yml@platform
 
   # ═══════════════════════════════════════════════════════════════════════════
   # DEPLOY — per-environment stages (dev, qa, staging, prod)
