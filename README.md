@@ -1,6 +1,6 @@
 # azure-project-starter
 
-Cookiecutter template for new .NET services at .
+Cookiecutter template for new .NET services.
 
 **One command → full repo** with pipeline, IaC, code quality tooling, and onboarding docs.
 
@@ -9,11 +9,11 @@ Cookiecutter template for new .NET services at .
 ```bash
 # Option 1: Cookiecutter (one-time)
 pip install cookiecutter
-cookiecutter https://dev.azure.com/your-org/YourProject/_git/azure-project-starter
+cookiecutter gh:your-org/azure-project-starter
 
 # Option 2: Cruft (recommended — supports cruft update)
 pip install cruft
-cruft create https://dev.azure.com/your-org/YourProject/_git/azure-project-starter
+cruft create gh:your-org/azure-project-starter
 ```
 
 Answer the prompts (project name, team, features to include). Gets you:
@@ -98,4 +98,4 @@ azure-project-starter     ← this repo: cookiecutter template for new projects
 
 ## Maintainers
 
-Platform Engineering — 
+Platform Engineering
