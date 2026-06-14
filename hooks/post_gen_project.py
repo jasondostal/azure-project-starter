@@ -98,6 +98,13 @@ if is_go_desktop:
     remove_dir("infra")
     remove_file("pipelines/infra-pipeline.yml")
 
+# Remove src/ if it ended up empty (go archetypes have no src content).
+if is_go:
+    src_dir = PROJECT_DIR / "src"
+    if src_dir.exists() and not any(src_dir.iterdir()):
+        src_dir.rmdir()
+        print("  removed src (empty)")
+
 # ── 2. App registration bootstrap (APIM only) ───────────────────────────────
 #    Entra app registrations CANNOT be created by Bicep, and the client ID
 #    (appId) is assigned BY Azure at creation time — there is nothing real to

@@ -1,3 +1,7 @@
 <Solution>
+{% if cookiecutter.project_type == 'dotnet-web' %}
+  <Project Path="src/{{cookiecutter.project_slug}}.Web/{{cookiecutter.project_slug}}.Web.csproj" />
+{% else %}
   <Project Path="src/{{cookiecutter.project_slug}}.Api/{{cookiecutter.project_slug}}.Api.csproj" />
+{% endif %}
 </Solution>
