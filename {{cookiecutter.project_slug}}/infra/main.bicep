@@ -152,6 +152,7 @@ module appService '../../azure-platform-iac/modules/compute/app-service.bicep' =
     alwaysOn: (environment == 'prod')
     environment: environment
     enableManagedIdentity: true
+    appCommandLine: '{% if cookiecutter.project_type == "node-agent" %}node server.js{% elif cookiecutter.project_type == "go-web" %}./{{cookiecutter.project_name | lower}}{% endif %}'
 {% if cookiecutter.include_cosmos %}
     appSettings: {
       Cosmos__Endpoint: cosmosEndpoint
