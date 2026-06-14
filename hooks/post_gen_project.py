@@ -55,10 +55,14 @@ if not is_dotnet:
     remove_file("Directory.Build.props")
     remove_file("Directory.Build.targets")
     remove_file("{{cookiecutter.project_slug}}.slnx")
-    if PROJECT_TYPE != "dotnet-api":
-        remove_dir("src/{{cookiecutter.project_slug}}.Api")
-    if PROJECT_TYPE != "dotnet-web":
-        remove_dir("src/{{cookiecutter.project_slug}}.Web")
+
+# Always remove the dotnet sub-archetype dirs that don't match the selected type.
+# This must run unconditionally (not nested under `if not is_dotnet`) so that
+# dotnet-api cleans up the Web project and dotnet-web cleans up the Api project.
+if PROJECT_TYPE != "dotnet-api":
+    remove_dir("src/{{cookiecutter.project_slug}}.Api")
+if PROJECT_TYPE != "dotnet-web":
+    remove_dir("src/{{cookiecutter.project_slug}}.Web")
 
 if not is_go:
     remove_dir("cmd")
@@ -88,6 +92,7 @@ if not is_node:
     remove_dir("kb")
     remove_file("src/app.html")
     remove_dir("src/routes")
+    remove_dir("src/lib")  # SvelteKit convention dir — only needed for node-agent
 
 if is_go_desktop:
     remove_dir("infra")

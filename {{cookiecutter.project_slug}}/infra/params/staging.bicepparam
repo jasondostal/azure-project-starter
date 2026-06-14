@@ -2,7 +2,7 @@
 using '../main.bicep'
 
 // ── Core ──
-param environment = 'staging'
+param environment = 'stage'
 param location = 'eastus'
 param tenantId = '{{cookiecutter.azure_tenant_id}}'
 
