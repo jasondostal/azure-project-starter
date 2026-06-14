@@ -34,10 +34,13 @@ def remove_file(path: str) -> None:
 
 
 def run(cmd: list[str], cwd: Path | None = None) -> None:
-    """Run a command, fail if it fails."""
-    result = subprocess.run(cmd, cwd=cwd or PROJECT_DIR, capture_output=True, text=True)
-    if result.returncode != 0:
-        print(f"  WARNING: {' '.join(cmd)} failed: {result.stderr.strip()}", file=sys.stderr)
+    """Run a command; print a warning if it fails or the binary is absent."""
+    try:
+        result = subprocess.run(cmd, cwd=cwd or PROJECT_DIR, capture_output=True, text=True)
+        if result.returncode != 0:
+            print(f"  WARNING: {' '.join(cmd)} failed: {result.stderr.strip()}", file=sys.stderr)
+    except FileNotFoundError:
+        print(f"  WARNING: {cmd[0]} not found — skipping '{' '.join(cmd)}'", file=sys.stderr)
 
 
 # ── 1. Remove unused archetype files ────────────────────────────────────────
@@ -82,6 +85,7 @@ if not is_python:
     remove_file("src/requirements.txt")
     remove_file("src/host.json")
     remove_file("src/pyproject.toml")
+    remove_file("src/function_app.py")
 
 if not is_node:
     remove_file("package.json")
@@ -162,6 +166,13 @@ print(f"  wrote {cruft_path}")
 if is_node:
     print("  running npm install to generate package-lock.json …")
     run(["npm", "install", "--no-audit", "--no-fund"])
+
+# ── 4b. Generate go.sum for go-web (imports chi; go build fails without it) ─
+#    go-desktop has no external deps so needs no go.sum.
+
+if is_go_web:
+    print("  running go mod tidy to generate go.sum …")
+    run(["go", "mod", "tidy"])
 
 # ── 5. Initialize git repo ──────────────────────────────────────────────────
 

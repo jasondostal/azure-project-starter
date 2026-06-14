@@ -1,10 +1,15 @@
-"""{{cookiecutter.project_name}} — Health check endpoint."""
+"""{{cookiecutter.project_name}} — Azure Functions v4 entry point (decorator model)."""
 import json
 import os
+
 import azure.functions as func
 
+app = func.FunctionApp(http_auth_level=func.AuthLevel.ANONYMOUS)
 
-def main(req: func.HttpRequest) -> func.HttpResponse:
+
+@app.route(route="health", methods=["GET"])
+def health(req: func.HttpRequest) -> func.HttpResponse:
+    """Health check endpoint."""
     return func.HttpResponse(
         body=json.dumps({
             "status": "healthy",
