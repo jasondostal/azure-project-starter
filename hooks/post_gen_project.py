@@ -152,16 +152,24 @@ print(f"""
 
 Next steps:
   cd {PROJECT_DIR}
-  # 1. Create Entra app registrations (APIM projects only):
+  # 1. Onboard each subscription/environment (idempotent — one run per env).
+  #    This wires the deploy identity (WIF, no secret), the ADO service
+  #    connection, variable groups, and the ADO environment:
+  #    azure-platform-iac/bootstrap/onboard-subscription.sh \\
+  #      --env dev --subscription <sub-id> \\
+  #      --ado-org https://dev.azure.com/{{cookiecutter.ado_org}} \\
+  #      --ado-project {{cookiecutter.ado_project}} --project {project_name}
+  #
+  # 2. Create Entra app registrations (APIM projects only):
   #    bash scripts/setup-app-registrations.sh
   #    → creates the app reg(s), writes REAL client IDs to .azure-guids.env
   #
-  # 2. Create the Azure DevOps project variables + service connections
+  # 3. Add approval checks on the ADO environments (qa/stage/prod) in the UI.
   #
-  # 3. Push to Azure DevOps:
+  # 4. Push to Azure DevOps (single branch — main):
   #    git remote add origin https://dev.azure.com/{{cookiecutter.ado_org}}/{{cookiecutter.ado_project}}/_git/{project_name}
-  #    git push -u origin --all
+  #    git push -u origin main
   #
-  # 4. Create pipeline from existing YAML:
-  #    pipelines/azure-pipelines.yml
+  # 5. Create pipeline from existing YAML:
+  #    pipelines/azure-pipelines.yml  (build once → promote dev→qa→stage→prod)
 """)

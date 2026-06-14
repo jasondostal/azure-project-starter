@@ -3,12 +3,14 @@
 # Generated from azure-project-starter ({{cookiecutter.project_type}} archetype).
 # Consumes pipeline templates from azure-platform-iac.
 #
-# Variable groups (configure in ADO Library):
+# BUILD ONCE, DEPLOY MANY (single-branch model): one branch (main). A merge
+# triggers ONE run that builds a single artifact and promotes that SAME artifact
+# through a linear chain — dev → qa → staging → prod — gated by ADO Environment
+# approvals (not by branch). No branch-per-environment.
+#
+# Variable groups (created by onboard-subscription.sh):
 #   vg-{{cookiecutter.project_name}}-shared   # build config
-#   vg-{{cookiecutter.project_name}}-dev      # dev service connection, app name
-#   vg-{{cookiecutter.project_name}}-qa
-#   vg-{{cookiecutter.project_name}}-staging
-#   vg-{{cookiecutter.project_name}}-prod
+#   vg-{{cookiecutter.project_name}}-dev / -qa / -staging / -prod   # SC + app name per env
 #
 # Environments: {{cookiecutter.project_name}}-dev, {{cookiecutter.project_name}}-qa,
 #               {{cookiecutter.project_name}}-staging, {{cookiecutter.project_name}}-prod
@@ -16,11 +18,11 @@
 
 trigger:
   branches:
-    include: [dev, qa, stage, main, release/*]
+    include: [main]
 
 pr:
   branches:
-    include: [dev, qa, stage, main]
+    include: [main]
 
 resources:
   repositories:
@@ -91,9 +93,9 @@ stages:
               dotnet: {{ 'true' if cookiecutter.project_type in ['dotnet-api', 'dotnet-web'] else 'false' }}
 
   # ═══════════════════════════════════════════════════════════════════════════
-  # DEPLOY — one stage per environment (branch-gated + approval-gated).
-  # Each stage runs ONLY on its branch (dev→dev, qa→qa, stage→staging,
-  # main→prod) and waits on the ADO Environment approval. Infra is deployed by
+  # DEPLOY — linear promotion of the SAME artifact, approval-gated.
+  # Each env dependsOn the previous (dev→qa→staging→prod); promotion is gated by
+  # ADO Environment approvals, NOT by branch. Infra is deployed by
   # infra-pipeline.yml, so these stages deploy the app only (deployInfra=false).
   # go-desktop has no Azure target (build-go.yml ships to GitHub Releases).
   # ═══════════════════════════════════════════════════════════════════════════
@@ -104,7 +106,6 @@ stages:
     parameters:
       environment: 'dev'
       adoEnvironment: '{{cookiecutter.project_name}}-dev'
-      branch: 'refs/heads/dev'
       dependsOn: ['Build']
       variableGroups: ['vg-{{cookiecutter.project_name}}-shared', 'vg-{{cookiecutter.project_name}}-dev']
       serviceConnection: '$(devServiceConnection)'
@@ -116,8 +117,7 @@ stages:
     parameters:
       environment: 'qa'
       adoEnvironment: '{{cookiecutter.project_name}}-qa'
-      branch: 'refs/heads/qa'
-      dependsOn: ['Build']
+      dependsOn: ['Deploy_dev']
       variableGroups: ['vg-{{cookiecutter.project_name}}-shared', 'vg-{{cookiecutter.project_name}}-qa']
       serviceConnection: '$(qaServiceConnection)'
       appName: '$(qaAppName)'
@@ -128,8 +128,7 @@ stages:
     parameters:
       environment: 'staging'
       adoEnvironment: '{{cookiecutter.project_name}}-staging'
-      branch: 'refs/heads/stage'
-      dependsOn: ['Build']
+      dependsOn: ['Deploy_qa']
       variableGroups: ['vg-{{cookiecutter.project_name}}-shared', 'vg-{{cookiecutter.project_name}}-staging']
       serviceConnection: '$(stagingServiceConnection)'
       appName: '$(stagingAppName)'
@@ -140,8 +139,7 @@ stages:
     parameters:
       environment: 'prod'
       adoEnvironment: '{{cookiecutter.project_name}}-prod'
-      branch: 'refs/heads/main'
-      dependsOn: ['Build']
+      dependsOn: ['Deploy_staging']
       variableGroups: ['vg-{{cookiecutter.project_name}}-shared', 'vg-{{cookiecutter.project_name}}-prod']
       serviceConnection: '$(prodServiceConnection)'
       appName: '$(prodAppName)'

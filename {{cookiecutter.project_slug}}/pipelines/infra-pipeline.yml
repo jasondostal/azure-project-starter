@@ -1,18 +1,20 @@
 {% if cookiecutter.project_type != 'go-desktop' %}
 # ── Azure DevOps Pipeline — {{cookiecutter.project_name}} Infrastructure ──
 #
-# Triggered only when infra/ changes. Validates Bicep, then deploys
-# infrastructure per environment with approval gates.
+# BUILD ONCE, DEPLOY MANY (single-branch model): one branch (main). Triggers
+# only on infra/ changes. One run runs what-if, then promotes the apply through
+# a linear chain — dev → qa → staging → prod — gated by ADO Environment
+# approvals, NOT by branch.
 # -----------------------------------------------------------------------------
 trigger:
   branches:
-    include: [dev, qa, stage, main]
+    include: [main]
   paths:
     include: [infra/*]
 
 pr:
   branches:
-    include: [dev, qa, stage, main]
+    include: [main]
   paths:
     include: [infra/*]
 
@@ -24,30 +26,42 @@ resources:
       ref: main
 
 variables:
-  azureServiceConnection: 'sc-{{cookiecutter.project_name}}-iac'
+  - group: vg-{{cookiecutter.project_name}}-shared
 
 stages:
-  - stage: Validate
-    displayName: 'Validate Bicep'
+  - stage: WhatIf
+    displayName: 'What-If (all envs)'
     jobs:
-      - job: Lint
+      - job: WhatIfAll
         pool:
           vmImage: 'ubuntu-latest'
         steps:
           - checkout: self
           - checkout: platform
-          - script: |
-              az bicep build --file infra/main.bicep
+          - script: az bicep build --file infra/main.bicep
             displayName: 'Bicep build (compile check)'
-
-  - stage: DeployDev
-    displayName: 'Deploy Infra → DEV'
-    dependsOn: Validate
-    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/dev'))
+{% for env in ['dev', 'qa', 'staging', 'prod'] %}
+          - task: AzureCLI@2
+            displayName: 'What-If {{ env | upper }}'
+            inputs:
+              azureSubscription: '$({{ env }}ServiceConnection)'
+              scriptType: 'bash'
+              scriptLocation: 'inlineScript'
+              inlineScript: |
+                az deployment sub what-if \
+                  --location eastus \
+                  --template-file infra/main.bicep \
+                  --parameters infra/params/{{ env }}.bicepparam
+{% endfor %}
+{% for env in ['dev', 'qa', 'staging', 'prod'] %}
+{% set prev = {'dev': 'WhatIf', 'qa': 'DeployDev', 'staging': 'DeployQa', 'prod': 'DeployStaging'} %}
+  - stage: Deploy{{ env | capitalize }}
+    displayName: 'Deploy Infra → {{ env | upper }}'
+    dependsOn: {{ prev[env] }}
     jobs:
-      - deployment: DeployInfraDev
-        displayName: 'Deploy infra to DEV'
-        environment: '{{cookiecutter.project_name}}-dev'
+      - deployment: DeployInfra{{ env | capitalize }}
+        displayName: 'Deploy infra to {{ env | upper }}'
+        environment: '{{cookiecutter.project_name}}-{{ env }}'
         pool:
           vmImage: 'ubuntu-latest'
         strategy:
@@ -58,93 +72,13 @@ stages:
                 - checkout: platform
                 - task: AzureCLI@2
                   inputs:
-                    azureSubscription: '$(devServiceConnection)'
+                    azureSubscription: '$({{ env }}ServiceConnection)'
                     scriptType: 'bash'
                     scriptLocation: 'inlineScript'
                     inlineScript: |
                       az deployment sub create \
                         --location eastus \
                         --template-file infra/main.bicep \
-                        --parameters infra/params/dev.bicepparam
-
-  - stage: DeployQA
-    displayName: 'Deploy Infra → QA'
-    dependsOn: Validate
-    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/qa'))
-    jobs:
-      - deployment: DeployInfraQA
-        displayName: 'Deploy infra to QA'
-        environment: '{{cookiecutter.project_name}}-qa'
-        pool:
-          vmImage: 'ubuntu-latest'
-        strategy:
-          runOnce:
-            deploy:
-              steps:
-                - checkout: self
-                - checkout: platform
-                - task: AzureCLI@2
-                  inputs:
-                    azureSubscription: '$(qaServiceConnection)'
-                    scriptType: 'bash'
-                    scriptLocation: 'inlineScript'
-                    inlineScript: |
-                      az deployment sub create \
-                        --location eastus \
-                        --template-file infra/main.bicep \
-                        --parameters infra/params/qa.bicepparam
-
-  - stage: DeployStaging
-    displayName: 'Deploy Infra → STAGING'
-    dependsOn: Validate
-    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/stage'))
-    jobs:
-      - deployment: DeployInfraStaging
-        displayName: 'Deploy infra to STAGING'
-        environment: '{{cookiecutter.project_name}}-staging'
-        pool:
-          vmImage: 'ubuntu-latest'
-        strategy:
-          runOnce:
-            deploy:
-              steps:
-                - checkout: self
-                - checkout: platform
-                - task: AzureCLI@2
-                  inputs:
-                    azureSubscription: '$(stagingServiceConnection)'
-                    scriptType: 'bash'
-                    scriptLocation: 'inlineScript'
-                    inlineScript: |
-                      az deployment sub create \
-                        --location eastus \
-                        --template-file infra/main.bicep \
-                        --parameters infra/params/staging.bicepparam
-
-  - stage: DeployProd
-    displayName: 'Deploy Infra → PROD'
-    dependsOn: Validate
-    condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
-    jobs:
-      - deployment: DeployInfraProd
-        displayName: 'Deploy infra to PROD'
-        environment: '{{cookiecutter.project_name}}-prod'
-        pool:
-          vmImage: 'ubuntu-latest'
-        strategy:
-          runOnce:
-            deploy:
-              steps:
-                - checkout: self
-                - checkout: platform
-                - task: AzureCLI@2
-                  inputs:
-                    azureSubscription: '$(prodServiceConnection)'
-                    scriptType: 'bash'
-                    scriptLocation: 'inlineScript'
-                    inlineScript: |
-                      az deployment sub create \
-                        --location eastus \
-                        --template-file infra/main.bicep \
-                        --parameters infra/params/prod.bicepparam
+                        --parameters infra/params/{{ env }}.bicepparam
+{% endfor %}
 {% endif %}
