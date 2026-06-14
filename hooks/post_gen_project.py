@@ -77,6 +77,7 @@ if not is_python:
     remove_dir("src/functions")
     remove_file("src/requirements.txt")
     remove_file("src/host.json")
+    remove_file("src/pyproject.toml")
 
 if not is_node:
     remove_file("package.json")
