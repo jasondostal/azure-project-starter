@@ -46,7 +46,7 @@ stages:
       - job: BuildApp
         displayName: 'Build {{cookiecutter.project_name}}'
         pool:
-          vmImage: 'ubuntu-latest'
+          {% if cookiecutter.agent_pool %}name: '{{ cookiecutter.agent_pool }}'{% else %}vmImage: 'ubuntu-latest'{% endif %}
         steps:
 
 {% if cookiecutter.project_type == 'dotnet-api' or cookiecutter.project_type == 'dotnet-web' %}
@@ -108,10 +108,13 @@ stages:
       adoEnvironment: '{{cookiecutter.project_name}}-dev'
       dependsOn: ['Build']
       variableGroups: ['vg-{{cookiecutter.project_name}}-shared', 'vg-{{cookiecutter.project_name}}-dev']
-      serviceConnection: '$(devServiceConnection)'
+      serviceConnection: 'sc-{{cookiecutter.project_name}}-dev'
       appName: '$(devAppName)'
       targetType: '{{ deploy_target }}'
       artifactName: '{{cookiecutter.project_name}}'
+{% if cookiecutter.agent_pool %}      pool:
+        name: '{{ cookiecutter.agent_pool }}'
+{% endif %}
 
   - template: pipelines/templates/deploy-environment.yml@platform
     parameters:
@@ -119,10 +122,13 @@ stages:
       adoEnvironment: '{{cookiecutter.project_name}}-qa'
       dependsOn: ['Deploy_dev']
       variableGroups: ['vg-{{cookiecutter.project_name}}-shared', 'vg-{{cookiecutter.project_name}}-qa']
-      serviceConnection: '$(qaServiceConnection)'
+      serviceConnection: 'sc-{{cookiecutter.project_name}}-qa'
       appName: '$(qaAppName)'
       targetType: '{{ deploy_target }}'
       artifactName: '{{cookiecutter.project_name}}'
+{% if cookiecutter.agent_pool %}      pool:
+        name: '{{ cookiecutter.agent_pool }}'
+{% endif %}
 
   - template: pipelines/templates/deploy-environment.yml@platform
     parameters:
@@ -130,10 +136,13 @@ stages:
       adoEnvironment: '{{cookiecutter.project_name}}-staging'
       dependsOn: ['Deploy_qa']
       variableGroups: ['vg-{{cookiecutter.project_name}}-shared', 'vg-{{cookiecutter.project_name}}-staging']
-      serviceConnection: '$(stagingServiceConnection)'
+      serviceConnection: 'sc-{{cookiecutter.project_name}}-staging'
       appName: '$(stagingAppName)'
       targetType: '{{ deploy_target }}'
       artifactName: '{{cookiecutter.project_name}}'
+{% if cookiecutter.agent_pool %}      pool:
+        name: '{{ cookiecutter.agent_pool }}'
+{% endif %}
 
   - template: pipelines/templates/deploy-environment.yml@platform
     parameters:
@@ -141,8 +150,11 @@ stages:
       adoEnvironment: '{{cookiecutter.project_name}}-prod'
       dependsOn: ['Deploy_staging']
       variableGroups: ['vg-{{cookiecutter.project_name}}-shared', 'vg-{{cookiecutter.project_name}}-prod']
-      serviceConnection: '$(prodServiceConnection)'
+      serviceConnection: 'sc-{{cookiecutter.project_name}}-prod'
       appName: '$(prodAppName)'
       targetType: '{{ deploy_target }}'
       artifactName: '{{cookiecutter.project_name}}'
+{% if cookiecutter.agent_pool %}      pool:
+        name: '{{ cookiecutter.agent_pool }}'
+{% endif %}
 {% endif %}

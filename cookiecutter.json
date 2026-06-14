@@ -14,6 +14,7 @@
   "include_apim": true,
   "include_sql": true,
   "include_cosmos": false,
+  "agent_pool": "",
   "__project_type_choices": [
     "dotnet-api",
     "dotnet-web",
@@ -24,6 +25,8 @@
   ],
   "_copy_without_render": [
     ".gitignore",
-    ".editorconfig"
+    ".editorconfig",
+    "src/app.html",
+    "src/routes/+page.svelte"
   ]
 }

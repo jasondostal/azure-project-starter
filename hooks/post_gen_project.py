@@ -86,6 +86,8 @@ if not is_node:
     remove_file("vite.config.ts")
     remove_file("tsconfig.json")
     remove_dir("kb")
+    remove_file("src/app.html")
+    remove_dir("src/routes")
 
 if is_go_desktop:
     remove_dir("infra")
@@ -142,7 +144,14 @@ with open(cruft_path, "w") as f:
     _json.dump(cruft_data, f, indent=2)
 print(f"  wrote {cruft_path}")
 
-# ── 4. Initialize git repo ──────────────────────────────────────────────────
+# ── 4. Generate package-lock.json for node-agent projects ───────────────────
+#    CI runs `npm ci` which requires package-lock.json to be present.
+
+if is_node:
+    print("  running npm install to generate package-lock.json …")
+    run(["npm", "install", "--no-audit", "--no-fund"])
+
+# ── 5. Initialize git repo ──────────────────────────────────────────────────
 
 run(["git", "init", "-b", "main"])
 run(["git", "add", "-A"])

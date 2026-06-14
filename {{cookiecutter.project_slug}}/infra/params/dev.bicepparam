@@ -1,5 +1,5 @@
 {% if cookiecutter.project_type != 'go-desktop' %}
-using 'main.bicep'
+using '../main.bicep'
 
 // ── Core ──
 param environment = 'dev'
