@@ -3,7 +3,12 @@
     <VersionPrefix>0.1.0</VersionPrefix>
     <EnableNETAnalyzers>true</EnableNETAnalyzers>
     <AnalysisLevel>latest-recommended</AnalysisLevel>
-    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Analyzers ON and reported as warnings (visible in build + the security-gates
+         `dotnet format` check), but NOT build-breaking. A generated starter must build
+         first-try; failing on perf/style nits (e.g. CA1848 LoggerMessage) in scaffold
+         code is hostile. Teams can flip TreatWarningsAsErrors back to true once their
+         code is analyzer-clean. -->
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <EnforceCodeStyleInBuild>true</EnforceCodeStyleInBuild>
   </PropertyGroup>
 </Project>
