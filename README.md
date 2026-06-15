@@ -86,18 +86,18 @@ cruft update      # Merge template changes
 
 The generated project consumes:
 - **azure-platform-iac** — platform Bicep modules (must be checked out alongside)
-- **azure-iac-reference** — exhaustive reference app showing all modules wired together
-- **azure-iac-patterns** — standalone patterns catalog (identity, foundry, networking, etc.)
+- **azure-iac-patterns** — standalone module library (identity, foundry, networking, etc.)
 - **Azure DevOps** — pipeline YAML references ADO variable groups and environments
 - **Azure subscriptions** — one per environment (dev/qa/staging/prod or dev/prod)
 
 ## The full platform
 
 ```
-azure-platform-iac        ← 21 generic Bicep modules (the foundation)
-azure-iac-reference       ← exhaustive demo: everything wired together
-azure-iac-patterns        ← standalone patterns: identity, foundry, networking, etc.
-azure-project-starter     ← this repo: cookiecutter template for new projects
+azure-platform-iac        ← generic Bicep modules + pipeline templates (the engine)
+azure-iac-patterns        ← standalone module library: identity, foundry, networking, etc.
+azure-project-starter     ← this repo: cookiecutter template for new projects (the factory)
+azure-ref-webapp-sql      ← example: private-by-default .NET monolith + SQL, 4 environments
+azure-playground          ← example: cheap, always-on sandbox for fast experiments
 ```
 
 ## Maintainers
